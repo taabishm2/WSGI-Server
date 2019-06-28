@@ -1,53 +1,22 @@
-from socket import *
-from http.server import BaseHTTPRequestHandler
-from io import StringIO
+import socket
 
-#For parsing HTTP Requests
-class HTTPRequest(BaseHTTPRequestHandler):
-    def __init__(self, request_text):
-        self.rfile = StringIO(request_text)
-        self.raw_requestline = self.rfile.readline()
-        self.error_code = self.error_message = None
-        self.parse_request()
+#Decide IP address and Port address to server.
+#Here, we assign local address to server & 8888 is server port
+serverAddr,serverPort = '', 8888
 
-    def send_error(self, code, message):
-        self.error_code = code
-        self.error_message = message
+#Create a socket interface.
+#AF_INET indicates IPv4 addressing, SOCK_STREAM implies UDP Connection
+serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-serverPort = 8080
-serverSocket = socket(AF_INET,SOCK_STREAM)  #Set up a IPv4 system using TCP Protocol
+#Setting Socket options
+#SOL_SOCKET modifies options for the current socket
+serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-serverSocket.bind(('',serverPort))  #Bind the port number to current server application
+#Assign the IP & Port No.
+serverSocket.bind((serverAddr,serverPort))
 
-serverSocket.listen(1)  #Listens to incoming connections with a maximum of 1 connections in queue
-print("Server running...")
+#Enable requests to server
+serverSocket.listen(1)
 
-for i in range (3):    #Server always keeps running
-    connectionSocket,addr = serverSocket.accept()   #Performs 3 way handshake. Sockets are set up per each connection in TCP as multiplexing involves source IP & Port No.
-    request = connectionSocket.recv(1024)    #Receive the request from client. Buffer of 1024
 
-    #Parsing the request HTTP
-    request = request.decode('utf-8')
-    request = HTTPRequest(request)
-    
-    fname = request.path
-
-    try:
-        fp = open(fname,mode='r')
-        fp = fp.read()
-        response = fp.encode('utf-8')
-
-        response = f"""\
-HTTP/1.1 200 OK
-
-<h1>{response}</h1>
-"""
-    except:
-        response = f"""\
-HTTP/1.1 404 Not Found
-
-"""
-        
-    connectionSocket.sendall(response.encode('utf-8'))
-    connectionSocket.close()
-    
+print("Server running on Port:",serverPort)
