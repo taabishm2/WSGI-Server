@@ -14,7 +14,8 @@ In the command prompt, navigate to the directory where the file ```server.py``` 
 ```console
 >python server.py flaskapp:app
 ```
-![](https://live.staticflickr.com/65535/48149638927_d34af5b4ec_o_d.jpg | width=150)
+
+<img src="https://live.staticflickr.com/65535/48149638927_d34af5b4ec_o_d.jpg" width="700">
 
 
 
