@@ -1,11 +1,11 @@
 import socket
-import StringIO
+from io import StringIO
 import sys
 
 class WSGIserver(object):
 
     #IPv4 addressing
-    address_family = AF_INET
+    address_family = socket.AF_INET
     #TCP type connection
     socket_type = socket.SOCK_STREAM
     #Request queue size = 1
@@ -19,7 +19,7 @@ class WSGIserver(object):
         listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         #Assign the IP & Port No.
-        listen_socket.bind(server_address))
+        listen_socket.bind(server_address)
 
         #Listen to at most request_queue_size requests
         listen_socket.listen(self.request_queue_size)
@@ -28,8 +28,8 @@ class WSGIserver(object):
         host,port = self.listen_socket.getsockname()[:2]
 
         #Get the Fully Qualified Host Name using the host address
-        self.server_name = self.getfqdn(host)
-        self.server_por  = port
+        self.server_name = socket.getfqdn(host)
+        self.server_port  = port
 
         #Framework provided header set is saved
         self.header_set = []
@@ -50,7 +50,7 @@ class WSGIserver(object):
 
     def handle_one_request(self):
         #Recieve connection request data with 1024 buffer
-        self.request_data = request_data = self.client_connection.recv(1024)
+        self.request_data = request_data = self.client_connection.recv(1024).decode('utf-8')
 
         #Print out the request data formatted as '< {line}\n'
         print( ''.join( '< {line}\n'.format(line=line) for line in request_data.splitlines() ) )
@@ -76,8 +76,8 @@ class WSGIserver(object):
         request_line = request_line.rstrip('\r\n')
 
         #Split various components of header
-        (   self.request_method    #GET
-            self.path              #/pathname
+        (   self.request_method,    #GET
+            self.path,              #/pathname
             self.request_version   #HTTP/1.1
         ) = request_line.split()
 
@@ -89,7 +89,7 @@ class WSGIserver(object):
         #Required WSGI variables
         env['wsgi.version']      = (1, 0)
         env['wsgi.url_scheme']   = 'http'
-        env['wsgi.input']        = StringIO.StringIO(self.request_data)
+        env['wsgi.input']        = StringIO(self.request_data)
         env['wsgi.errors']       = sys.stderr
         env['wsgi.multithread']  = False
         env['wsgi.multiprocess'] = False
@@ -129,17 +129,23 @@ class WSGIserver(object):
 
             response += '\r\n'
 
+            #Add results data from application to body
+            for data in result:
+                response += data.decode('utf-8')
+
             #Print fomratted response data
-            print( ''.join('> {line}\n'.format(line=line) for line in reponse.splitlines()) )
+            print( ''.join('> {line}\n'.format(line=line) for line in response.splitlines()) )
 
             #Finally send to client
-            self.client_connection.sendall(response)
+            self.client_connection.sendall(response.encode('utf-8'))
+            print('Sent to client')
 
         finally:
             self.client_connection.close()
+            print('Closed Connection')
 
 def make_server(server_address, application):
-    server = WSGIServer(server_address)
+    server = WSGIserver(server_address)
     server.set_app(application)
     return server
 
@@ -152,8 +158,14 @@ if __name__ == '__main__':
         sys.exit('Provide a WSGI application object as module:callable')
     app_path = sys.argv[1]
     module, application = app_path.split(':')
+
     module = __import__(module)
+    print('Imported: ',module)
+
     application = getattr(module,application)
+    print('Obtained application: ',application)
+
     httpd = make_server(SERVER_ADDRESS, application)
-    print("WSGIServer: Serving HTTP on port {port} ...\n".format(port=PORT))
+    print("\nWSGIServer: Serving HTTP on port {port} ...\n".format(port=PORT))
+
     httpd.server_forever()
